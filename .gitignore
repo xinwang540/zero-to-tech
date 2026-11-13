@@ -21,3 +21,4 @@ dist/
 backend/.venv/
 backend/_pycache/
 *.pyc
+backend/*.db
