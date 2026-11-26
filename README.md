@@ -205,11 +205,38 @@ kill 进程号                    # 停掉
 **5. 放行 8000 端口**
 
 去云平台控制台的安全组 / 防火墙，放行 8000 端口（80 端口应该已经放行）。
+**6. 域名与 HTTPS**（首次部署才需要）
 
-**6. 验证**
+1. 在域名控制台加两条 A 记录：主机记录分别填 `@` 和 `www`，记录值都填服务器 IP（服务器在中国大陆的，要先完成 ICP 备案）
+2. 给网站单独建一份以域名命名的配置，`default` 只留作兜底：
 
-浏览器访问 `http://服务器IP`，打开文字实验室做一次分析，再看历史记录。
-换一个浏览器（或无痕窗口）再试一次，两边的历史记录应该是互相看不到的。
+   ```bash
+   sudo cp /etc/nginx/sites-available/default /etc/nginx/sites-available/example.com
+   sudo vim /etc/nginx/sites-available/example.com
+   sudo vim /etc/nginx/sites-available/default
+   sudo ln -s /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+   - `example.com`：两行 `listen` 去掉 `default_server`，`server_name _;` 改成 `server_name example.com www.example.com;`，再加一行 `access_log /var/log/nginx/example.com.access.log;`
+   - `default`：整个换成兜底块——`listen 80 default_server;`、`listen [::]:80 default_server;`、`server_name _;`、`return 404;`
+
+3. 安装 certbot，签发证书（两个域名都要选上，直接回车即全选）：
+
+   ```bash
+   sudo snap install --classic certbot
+   sudo ln -s /snap/bin/certbot /usr/bin/certbot
+   sudo certbot --nginx
+   sudo certbot renew --dry-run      # 彩排一次续期，跑通就不用管了
+   ```
+**7. 安全组 / 防火墙**
+
+只放行 **22（SSH）**、**80（HTTP）** 和 **443（HTTPS）**。**8000 不要放行**——后端只监听 `127.0.0.1`，由 Nginx 转发进去。
+
+**8. 验证**
+
+浏览器访问 `https://example.com`，地址栏不再标"不安全"；再敲 `http://` 开头的，应该自动跳到 `https://`。做一次分析、看一眼历史记录。
+
 
 ## 配置说明
 
